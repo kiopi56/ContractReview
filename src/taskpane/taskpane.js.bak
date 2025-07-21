@@ -1,0 +1,54 @@
+
+
+/* ===== Word Clause Checker ===== */
+
+alert('taskpane loaded'); 
+
+Office.onReady(() => {
+  document.getElementById("scan").onclick = scan;
+});
+
+async function scan() {
+  await Word.run(async (ctx) => {
+    const body = ctx.document.body;
+    body.load("text");
+    await ctx.sync();
+
+    const res = await fetch("https://localhost:5001/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ doc: body.text }),
+    });
+    const data = await res.json();
+    renderMissing(data.missing);
+  });
+}
+
+function renderMissing(list) {
+  const div = document.getElementById("result");
+  if (!list.length) {
+    div.innerHTML = "✅  必須条項はすべて含まれています";
+    return;
+  }
+  div.innerHTML =
+    "<b>欠落条項:</b><br>" +
+    list
+      .map(
+        (id) =>
+          `<button onclick="insertClause('${id}')">${id} を挿入</button>`
+      )
+      .join("<br>");
+}
+
+async function insertClause(id) {
+  /* 簡易スタブ: 必須条項テキストを手書きでマップ */
+  const clauses = {
+    NDA: "秘密保持義務：当事者は・・・",
+    law: "準拠法は日本法とする。",
+  };
+  const html = clauses[id] || "";
+  await Word.run(async (ctx) => {
+    ctx.document.getSelection().insertHtml(html, "Replace");
+    await ctx.sync();
+  });
+}
